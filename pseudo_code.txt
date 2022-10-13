@@ -1,0 +1,97 @@
+The problem:
+We have PCR data but there are some duplicates in there that we want to remove. They could have occured because of 
+various things in the experimental workflow. If these aren't removed then there could be interpretations of high coverage 
+when it actually doesnt exist. 
+
+In short we are cleaning up the data so our interpretation is clearer and not biased by PCR duplicates
+
+other notes from office hours:
+becasue it is inclusive make sure to have total number minus 1
+but as long as you are consistent you wont need the -1
+you don't need to worry about reverse complementing because it is 
+a single end read. If it was a paired end read then we would need a 
+reverse complementing read.
+for minus strand we only care about start position from the left side
+for simplicity we are giving them the first one. 
+
+you are going to need to parse out the CIGAR string
+
+dict:
+    key:
+    chrom, start, position, string umi 
+    value:   
+    count 
+
+if it is in the set then pass
+
+They must share 
+chrom name
+start position(always leftmost)
+umi 
+strand
+
+
+pseudo_code
+```
+This pseudo_code is going to go through each line in the SAM file and will create one single entry into new file per PCR so that there
+are no duplicates 
+```
+We need to have argparse in our files
+    out file name of our UMI 
+    the SAM file that we are going to be looking at 
+
+Create a dictionary of the files that we have found to be unique in their PCR     
+    this is so that we can reference when we come across a new line to see if it is a new or reoccuring PCR read
+        the key for this will be 
+            chromosome
+            start position  
+            string[if it is on the + or - strand]
+            UMI
+        the values will be a count 
+            we can get a sum of the counts at the end to make sure we went through all of our files
+
+Function:
+    we are going to need a function that will go through the CIGAR string and parse it out depending on the strand
+    if it is on teh negative strand we would care more about the end of the cigar string        
+        ex. 5S 10M 3S.
+            we would only care about the 3S on the negative strand and add that value to the position
+
+            the 5S we would subtract from the postiive strand as it would adjsut that start position
+
+    def cigar_parse():
+        pull out the individual parts of the cigar and grab the parts that we need depeding on the strand
+        this will then return the sep values in a list which i can take from either the first or last soft clipping value
+
+open a new sam that we will be writing to
+read through each line of the SAM file we are looking at 
+    we will need to ignore all the lines with the @ symbol and write them to the new SAM file
+
+
+    check the UMI to see if it is in the know list [column1]
+        if it is not then we can continue to the next line
+
+        if it is in the list we keep going and save the UMI to a variable    
+            take a look at the chromosome [RNAME column3] and save it to a variable     
+                [so now we have the umi and the chromosome number]
+
+                now we take a look at the position [POS column 4]
+                    [now we have the umi, chrom number and position]
+
+                    Check to see which strand it is on (FLAG col2 and it is bitwise flag 16)
+                        save that to a variable
+
+                        Pull out the CIGAR string [CIGAR column6] 
+                            depending on the strand we are going to need to use this field differently
+                                this will adjust the values in our position variable
+                                this will also change the number of the position varible through addition or subtraction depeding on the strand  
+
+                                now that we have gone through and pulled everything out we will need to see if it is in our dictionary
+                                    if it is in our dictionary, then we pass and add a +1 to our counter
+                                    if it is not in our dictionary we will add to it
+                                        we will also output the columns to our new SAM file 
+
+    close the files
+    print out the count of our dictionary so we know how many files we went through and see if we got all of them. 
+
+
+
